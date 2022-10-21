@@ -58,6 +58,5 @@ export const handler: ServerlessFunctionSignature<MyContext, MyEvent> = async fu
       return callback(null, new Error('Unknown Error'));
     }
 
-
   }
 };

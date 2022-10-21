@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "test": "tsc --noEmit",
+    "watch": "nodemon -x \"npm run start\"",
     "start": "twilio-run --functions-folder dist/functions --assets-folder dist/assets",
     "deploy": "twilio-run deploy --functions-folder dist/functions --assets-folder dist/assets",
     "build": "tsc && npm run build:copy-assets",
@@ -20,10 +21,17 @@
   },
   "devDependencies": {
     "copyfiles": "^2.2.0",
+    "nodemon": "^2.0.20",
     "twilio-run": "^3.4.2",
     "typescript": "^3.8"
   },
   "engines": {
     "node": "14"
+  },
+  "nodemonConfig": {
+    "ext": "ts",
+    "watch": [
+      "src"
+    ]
   }
 }
