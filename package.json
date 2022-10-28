@@ -16,10 +16,13 @@
     "@line/bot-sdk": "^7.5.2",
     "@twilio-labs/serverless-runtime-types": "^1.1",
     "@twilio/runtime-handler": "1.2.3",
+    "node-fetch": "^2.6.7",
+    "node-jose": "^2.1.1",
     "twilio": "^3.79.0",
     "twilio-flex-token-validator": "^1.5.6"
   },
   "devDependencies": {
+    "@types/node-jose": "^1.1.10",
     "copyfiles": "^2.2.0",
     "nodemon": "^2.0.20",
     "twilio-run": "^3.4.2",
