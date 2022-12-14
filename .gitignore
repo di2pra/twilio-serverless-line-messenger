@@ -134,4 +134,8 @@ dist
 .pnp.*
 
 
-src/assets/private_key.private.key
+src/assets/*.key
+
+
+.env.*
+!.env.sample

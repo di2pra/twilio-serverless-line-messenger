@@ -1,8 +1,6 @@
 import { Client as LineClient } from '@line/bot-sdk';
 import '@twilio-labs/serverless-runtime-types';
 import { Context, ServerlessCallback, ServerlessFunctionSignature } from '@twilio-labs/serverless-runtime-types/types';
-import jose from 'node-jose';
-import { DocumentInstance, DocumentListInstance } from 'twilio/lib/rest/sync/v1/service/document';
 const fetch = require('node-fetch');
 
 type MyEvent = {
@@ -29,72 +27,6 @@ type CAToken = {
   key_id: string;
 }
 
-// Helper method to simplify getting a Sync resource (Document, List, or Map)
-// that handles the case where it may not exist yet.
-const getOrCreateResource: (resource: DocumentListInstance, name: string, options?: object) => Promise<DocumentInstance> = async (resource, name, options = {}) => {
-  try {
-    // Does this resource (Sync Document, List, or Map) exist already? Return it
-    return await resource(name).fetch();
-  } catch (err) {
-    // It doesn't exist, create a new one with the given name and return it
-    // @ts-ignore
-    options.uniqueName = name;
-    return await resource.create(options);
-  }
-};
-
-const getLineChannelAccessToken: ({ syncServiceSid, privateKey, assertionSigningKey, channelId }: { syncServiceSid: string, privateKey: string, assertionSigningKey: string, channelId: string }) => Promise<CAToken> = async ({ syncServiceSid, privateKey, assertionSigningKey, channelId }) => {
-
-  const syncClient = Runtime.getSync({ serviceName: syncServiceSid });
-
-  const document = await getOrCreateResource(syncClient.documents, 'line-channel-access-token');
-
-  let CAToken: CAToken = document.data;
-
-  if (CAToken.access_token === undefined) {
-
-    const header = {
-      alg: "RS256",
-      typ: "JWT",
-      kid: assertionSigningKey
-    };
-
-    const payload = {
-      iss: channelId,
-      sub: channelId,
-      aud: "https://api.line.me/",
-      exp: Math.floor(new Date().getTime() / 1000) + 60 * 30,
-      token_exp: 60 * 60 * 24 * 30
-    };
-
-    const JWToken = await jose.JWS.createSign({ format: 'compact', fields: header }, JSON.parse(privateKey))
-      .update(JSON.stringify(payload))
-      .final();
-
-    const params = new URLSearchParams();
-    params.append('grant_type', 'client_credentials');
-    params.append('client_assertion_type', 'urn:ietf:params:oauth:client-assertion-type:jwt-bearer');
-    params.append('client_assertion', JWToken.toString());
-
-    const request = await fetch(`https://api.line.me/oauth2/v2.1/token`, {
-      method: "POST",
-      body: params
-    });
-
-    if (!request.ok) {
-      throw new Error('Error while retrieving channel access token from Line');
-    }
-
-    CAToken = request.json() as CAToken;
-
-    await document.update({ data: CAToken, ttl: 60 * 60 * 24 * 29 });
-
-  }
-
-  return CAToken;
-
-}
-
 export const handler: ServerlessFunctionSignature<MyContext, MyEvent> = async function (
   context: Context<MyContext>,
   event: MyEvent,
@@ -103,19 +35,26 @@ export const handler: ServerlessFunctionSignature<MyContext, MyEvent> = async fu
 
   try {
 
+    // as this webhook will be triggered for every single message, if the call is made when we receive a message from Line then do not proceed
     if (event.Source === "API") {
       // Return a success response using the callback function.
       return callback(null);
     }
 
+    // get the Twilio client
     const twilioClient = context.getTwilioClient();
 
     const syncServiceSid = context.TWILIO_SYNC_SERVICE_SID || 'default';
     const assertionSigningKey = context.LINE_ASSERTION_SIGNING_KEY;
     const channelId = context.LINE_CHANNEL_ID;
-    const privateKey = Runtime.getAssets()['/private_key.key'].open();
 
-    const CAToken: CAToken = await getLineChannelAccessToken({ syncServiceSid: syncServiceSid, privateKey: privateKey, assertionSigningKey: assertionSigningKey, channelId: channelId });
+    // First, get the path for the Asset
+    const path = Runtime.getAssets()['/getLineChannelAccessToken.js'].path;
+
+    // Next, you can use require() to import the library
+    const module = require(path);
+
+    const CAToken: CAToken = await module.getLineChannelAccessToken({ syncServiceSid: syncServiceSid, assertionSigningKey: assertionSigningKey, channelId: channelId });
 
     // create LINE SDK client
     const lineClient = new LineClient({
@@ -123,10 +62,13 @@ export const handler: ServerlessFunctionSignature<MyContext, MyEvent> = async fu
       channelSecret: context.LINE_CHANNEL_SECRET
     });
 
+    // retrieve the conversation
     const conversation = await twilioClient.conversations.v1.conversations(event.ConversationSid).fetch();
 
+    // parse the conversation attributes where we have stored the Line User Id
     const attributes = JSON.parse(conversation.attributes);
 
+    // if the message contains a text body, then send the text message to the line user
     if (event.Body) {
       await lineClient.pushMessage(
         attributes.userId,
@@ -134,6 +76,7 @@ export const handler: ServerlessFunctionSignature<MyContext, MyEvent> = async fu
       );
     }
 
+    // if the message contains a media object, then send it to the line user
     if (event.Media) {
 
       const mediaObject = JSON.parse(event.Media) as {
@@ -183,7 +126,7 @@ export const handler: ServerlessFunctionSignature<MyContext, MyEvent> = async fu
     if (err instanceof Error) {
       return callback(err);
     } else {
-      return callback(null, new Error('Unknown Error'));
+      return callback(new Error('Unknown Error'));
     }
 
   }
