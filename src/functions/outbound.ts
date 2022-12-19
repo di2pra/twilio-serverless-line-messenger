@@ -16,7 +16,7 @@ type MyContext = {
   FLEX_CONVERSATION_SERVICE_SID: string;
   LINE_CHANNEL_ID: string;
   LINE_CHANNEL_SECRET: string;
-  LINE_ASSERTION_SIGNING_KEY: string;
+  LINE_ASSERTION_SIGNING_KEY_ID: string;
   TWILIO_SYNC_SERVICE_SID: string;
 }
 
@@ -45,7 +45,7 @@ export const handler: ServerlessFunctionSignature<MyContext, MyEvent> = async fu
     const twilioClient = context.getTwilioClient();
 
     const syncServiceSid = context.TWILIO_SYNC_SERVICE_SID || 'default';
-    const assertionSigningKey = context.LINE_ASSERTION_SIGNING_KEY;
+    const assertionSigningKeyId = context.LINE_ASSERTION_SIGNING_KEY_ID;
     const channelId = context.LINE_CHANNEL_ID;
 
     // First, get the path for the Asset
@@ -54,7 +54,7 @@ export const handler: ServerlessFunctionSignature<MyContext, MyEvent> = async fu
     // Next, you can use require() to import the library
     const module = require(path);
 
-    const CAToken: CAToken = await module.getLineChannelAccessToken({ syncServiceSid: syncServiceSid, assertionSigningKey: assertionSigningKey, channelId: channelId });
+    const CAToken: CAToken = await module.getLineChannelAccessToken({ syncServiceSid: syncServiceSid, assertionSigningKeyId: assertionSigningKeyId, channelId: channelId });
 
     // create LINE SDK client
     const lineClient = new LineClient({
@@ -93,6 +93,7 @@ export const handler: ServerlessFunctionSignature<MyContext, MyEvent> = async fu
           previewImageUrl: string;
         }[];
 
+        // for each media item, retrieve the media metadata, and send the temporary url to Line Messenger
         for await (const mediaItem of mediaObject) {
           const retrieveMediaUrl = await fetch(`https://mcs.us1.twilio.com/v1/Services/${context.FLEX_CONVERSATION_SERVICE_SID}/Media/${mediaItem.Sid}`, {
             method: "GET",

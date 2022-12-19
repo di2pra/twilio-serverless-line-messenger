@@ -20,17 +20,21 @@ type MyEvent = {
 }
 
 type MyContext = {
+  /* ==============
+  provided automatically by the serverless host in the cloud 
+  =============== */
+  SERVICE_SID: string;
+  DOMAIN_NAME: string;
+  /* ============== */
   ACCOUNT_SID: string;
   AUTH_TOKEN: string;
   FLEX_CONVERSATION_SERVICE_SID: string;
-  CUSTOM_DOMAIN_NAME: string;
-  DOMAIN_NAME: string;
   TWILIO_SYNC_SERVICE_SID: string;
   LINE_CHANNEL_SECRET: string;
-  LINE_ASSERTION_SIGNING_KEY: string;
+  LINE_ASSERTION_SIGNING_KEY_ID: string;
   FLEX_STUDIO_FLOW_SID: string;
-  SERVICE_SID: string;
   LINE_CHANNEL_ID: string;
+  CUSTOM_DOMAIN_NAME: string; // in case you are running the code locally and you are using ngrok
 }
 
 type CAToken = {
@@ -69,7 +73,7 @@ export const handler: ServerlessFunctionSignature<MyContext, MyEvent> = async fu
 
     // init Line Client
     const syncServiceSid = context.TWILIO_SYNC_SERVICE_SID || 'default';
-    const assertionSigningKey = context.LINE_ASSERTION_SIGNING_KEY;
+    const assertionSigningKeyId = context.LINE_ASSERTION_SIGNING_KEY_ID;
     const channelId = context.LINE_CHANNEL_ID;
 
     // First, get the path for the Asset
@@ -78,7 +82,7 @@ export const handler: ServerlessFunctionSignature<MyContext, MyEvent> = async fu
     // Next, you can use require() to import the library
     const module = require(path);
 
-    const CAToken: CAToken = await module.getLineChannelAccessToken({ syncServiceSid: syncServiceSid, assertionSigningKey: assertionSigningKey, channelId: channelId });
+    const CAToken: CAToken = await module.getLineChannelAccessToken({ syncServiceSid: syncServiceSid, assertionSigningKeyId: assertionSigningKeyId, channelId: channelId });
 
     const lineClient = new LineClient({
       channelAccessToken: CAToken.access_token,

@@ -1,6 +1,6 @@
 {
   "name": "twilio-serverless-line-messenger",
-  "version": "0.0.0",
+  "version": "1.0.0",
   "private": true,
   "scripts": {
     "test": "tsc --noEmit",
@@ -18,8 +18,7 @@
     "@twilio/runtime-handler": "1.2.3",
     "node-fetch": "^2.6.7",
     "node-jose": "^2.1.1",
-    "twilio": "^3.79.0",
-    "twilio-flex-token-validator": "^1.5.6"
+    "twilio": "^3.79.0"
   },
   "devDependencies": {
     "@types/node-jose": "^1.1.10",
